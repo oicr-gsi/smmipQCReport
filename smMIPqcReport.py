@@ -116,9 +116,6 @@ def CreateAx(row, col, pos, figure, Data, samples, run, YLabel, title = None, XL
 
     # add ticks labels
     if XLabel is not None:
-        
-        print(samples)
-        
         plt.xticks(xcoord, [i[:i.index('_TS')+len('_TS')] if '_TS' in i else i for i in samples], ha='center', fontsize=12, rotation='vertical')
     else:
         plt.xticks(xcoord, ['' for i in samples], ha='center', fontsize=12, rotation=0)
