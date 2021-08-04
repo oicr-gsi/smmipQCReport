@@ -86,7 +86,7 @@ def get_samples_qc(D):
     return samples, percent_assigned, read_counts, assigned, percent_discarded, empty, percent_empty
 
 
-def CreateAx(row, col, pos, figure, Data, samples, YLabel, title = None, XLabel = None, line = None):
+def CreateAx(row, col, pos, figure, Data, samples, run, YLabel, title = None, XLabel = None, line = None):
     
     ax = figure.add_subplot(row, col, pos)
     
@@ -116,7 +116,10 @@ def CreateAx(row, col, pos, figure, Data, samples, YLabel, title = None, XLabel 
 
     # add ticks labels
     if XLabel is not None:
-        plt.xticks(xcoord, [i[:i.index('_TS')+len('_TS')] for i in samples], ha='center', fontsize=12, rotation='vertical')
+        
+        print(samples)
+        
+        plt.xticks(xcoord, [i[:i.index('_TS')+len('_TS')] if '_TS' in i else i for i in samples], ha='center', fontsize=12, rotation='vertical')
     else:
         plt.xticks(xcoord, ['' for i in samples], ha='center', fontsize=12, rotation=0)
 
@@ -162,17 +165,17 @@ def plot_qc_metrics(project, run, plate, samples, percent_assigned, read_counts,
     figure = plt.figure(1, figsize = (55, 55)) 
 
     # bar grap percent assigned
-    ax1 = CreateAx(6, 1, 1, figure, percent_assigned, samples, 'percent assigned', title = Title, XLabel = None, line = 'high')
+    ax1 = CreateAx(6, 1, 1, figure, percent_assigned, samples, run, 'percent assigned', title = Title, XLabel = None, line = 'high')
     # bar graphs with read counts
-    ax2 = CreateAx(6, 1, 2, figure, read_counts, samples, 'reads', title = None, XLabel = None, line = None)
+    ax2 = CreateAx(6, 1, 2, figure, read_counts, samples, run, 'reads', title = None, XLabel = None, line = None)
     # bar grap pre-assigned
-    ax3 = CreateAx(6, 1, 3, figure, assigned, samples, 'assigned', title = None, XLabel = None, line = None)
+    ax3 = CreateAx(6, 1, 3, figure, assigned, samples, run, 'assigned', title = None, XLabel = None, line = None)
     # bar graph with percent discarded
-    ax4 = CreateAx(6, 1, 4, figure, percent_discarded, samples, 'percent unassigned', title = None, XLabel = None, line = None)
+    ax4 = CreateAx(6, 1, 4, figure, percent_discarded, samples, run, 'percent unassigned', title = None, XLabel = None, line = None)
     # bar empty smmips
-    ax5 = CreateAx(6, 1, 5, figure, empty, samples, 'assigned empty', title = None, XLabel = None, line = None)
+    ax5 = CreateAx(6, 1, 5, figure, empty, samples, run, 'assigned empty', title = None, XLabel = None, line = None)
     # bar percent empty smmips
-    ax6 = CreateAx(6, 1, 6, figure, percent_empty, samples, 'percent empty', title = None, XLabel = 'libraries', line = None)
+    ax6 = CreateAx(6, 1, 6, figure, percent_empty, samples, run, 'percent empty', title = None, XLabel = 'libraries', line = None)
 
     plt.tight_layout()  
 
