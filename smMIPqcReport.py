@@ -12,7 +12,6 @@ from matplotlib.patches import Patch
 import matplotlib as mpl
 from matplotlib.lines import Line2D
 import argparse
-import markdown
 from datetime import datetime
 import os
 from jinja2 import Environment, FileSystemLoader
