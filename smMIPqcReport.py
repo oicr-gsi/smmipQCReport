@@ -14,8 +14,12 @@ from matplotlib.lines import Line2D
 import argparse
 import markdown
 from datetime import datetime
-import xhtml2pdf.pisa as pisa
 import os
+from jinja2 import Environment, FileSystemLoader
+from weasyprint import HTML
+from weasyprint import CSS
+
+
 
 
 def read_qc_table(qc_table):
@@ -434,42 +438,78 @@ def keep_project_samples(D, project):
 
 
 
-
-def generate_report(project, run, QC_summary, sample_wells, include_plate):
-    '''
-    (str | None, str, str, str, bool)
+def makepdf(html, outputfile):
+    """
+    (str) -> None
     
+    Generates a PDF file from a string of HTML
+   
+    Parameters
+    ----------
+    - html (str) String of formated HTML
+    - outputfile (str): Name of the output PDF file
+    """
+    
+    css_file = os.path.join(os.path.dirname(__file__), './static/css/style.css')
+    htmldoc = HTML(string=html, base_url=__file__)
+    htmldoc.write_pdf(outputfile, stylesheets=[CSS(css_file)], presentational_hints=True)
+
+
+
+def write_QC_report(args):
+    '''
+    (str, str, str, str, str, str, str, list, str | None)
+
+    Write a PDF report with QC metrics and released fastqs for a given project
+
+    - project (str): Project name as it appears in File Provenance Report
+    - working-dir (str): Path to the directory with project directories and links to fastqs 
+    - project_name (str): Project name used to create the project directory in gsi space
+    - project_code (str): Project code from MISO
+    - bamqc_db (str): Path to the bamqc db
+    - cfmedipqc_db (str): Path to the cfmedipqc db 
+    - run_directories (list): List of directories with links to fastqs
+    - provenance (str): Path to File Provenance Report.
+    - level (str): Simgle release or cumulative project level report. Values: single or cumulative 
+    - prefix (str | None): Use of prefix assumes that file paths in File Provenance Report are relative paths.
+                           Prefix is added to the relative path in FPR to determine the full file path.
+    - keep_html (bool): Writes html report to file if True
+    '''
+
+    '''
+     project, run, QC_summary, sample_wells, include_plate):
+     
+     (str | None, str, str, str, bool)
+         
 
     Parameters
     ----------    
-        
-    - project (str | None): Name of the project
+             
+    - project (str): Name of the project
     - run (str): Run ID
-    - QC_summary (str): Path to the summary file with QC metrics
+    - qc_summary (str): Path to the summary file with QC metrics
     - sample_wells (str): Path to the file with sample plate and well information
-    - include_plate (bool): Include metrics plots at the plate level and heatmaps if True
     '''
-    
+         
     # extract QC metrics
-    D = read_qc_table(QC_summary)
+    D = read_qc_table(args.qc_summary)
     # remove samples not in project, but keep controls
-    if project:
-        D = keep_project_samples(D, project)
-    
+    D = keep_project_samples(D, args.project)
+         
     # get the qc table header
-    infile = open(QC_summary)
+    infile = open(args.qc_summary)
     header = infile.readline().rstrip().split('\t')
     infile.close()
-    
+         
     # get the samples of interest and associated qc metrics
     samples, percent_assigned, read_counts, assigned, percent_discarded, empty, percent_empty = get_samples_qc(D)
 
     # plot qc metrics for the run and project
-    metrics_figure = plot_qc_metrics(project, run, '', samples, percent_assigned, read_counts, assigned, percent_discarded, empty, percent_empty, '{0} smMip QC'.format(run))
-    
+    metrics_figure = plot_qc_metrics(args.project, args.run, '', samples, percent_assigned, read_counts, assigned, percent_discarded, empty, percent_empty, '{0} smMip QC'.format(args.run))
+         
     # get the samples plate and well location
-    samples_plates = get_sample_plate_location(sample_wells)
-    
+    samples_plates = get_sample_plate_location(args.wells)
+         
     # check that all samples have well info
     missing = []
     for i in D:
@@ -477,24 +517,21 @@ def generate_report(project, run, QC_summary, sample_wells, include_plate):
             print(i)
             missing.append(i)
     assert len(missing) == 0
-    
-    
-    #assert sorted([i for i in D]) == sorted([i for i in samples_plates])
-    
+         
     # make a list of plates
-    plates = get_plates(samples_plates, D, project)
+    plates = sorted(get_plates(samples_plates, D, args.project))
 
     # collect the name of the fugure files with heatmaps
-    heatmap_names = []
-    metric_plots = []
-    
+    heatmap_names = {}
+    metric_plots = {}
+         
     for current_plate in plates:
         # keep only samples on that plate
         Dprime = {i:D[i] for i in D if samples_plates[i][0] == current_plate}
         # get the samples of interest and associated qc metrics
         s, pa, rc, a, pd, e, pe = get_samples_qc(Dprime)
-        metrics_figure_plate = plot_qc_metrics(project, run, current_plate, s, pa, rc, a, pd, e, pe, current_plate)
-        metric_plots.append(metrics_figure_plate)
+        metrics_figure_plate = plot_qc_metrics(args.project, args.run, current_plate, s, pa, rc, a, pd, e, pe, current_plate)
+        metric_plots[current_plate] = metrics_figure_plate
         # map samples with qc metrics to each well
         wells = map_samples_to_wells(samples_plates, current_plate)
         # add 0 values to wells without samples
@@ -507,74 +544,78 @@ def generate_report(project, run, QC_summary, sample_wells, include_plate):
         percent_assigned = qc_metrics_on_plate(Dprime, current_samples, 'percent_assigned')
         percent_empty = qc_metrics_on_plate(Dprime, current_samples, 'percent_empty_smmips')
         # plot heatmaps for the current plate
-        figure_name = plot_heatmaps(read_counts, assigned, percent_assigned, percent_empty, project, run, current_plate)
-        heatmap_names.append(figure_name)
+        figure_name = plot_heatmaps(read_counts, assigned, percent_assigned, percent_empty, args.project, args.run, current_plate)
+        heatmap_names[current_plate] = figure_name
 
+
+    # make a sorted list of plate names
+    
 
     # get current date (year-month-day)
     current_date = datetime.today().strftime('%Y-%m-%d')
+        
+    template_dir = os.path.join(os.path.dirname(__file__), './templates')
+    environment = Environment(loader = FileSystemLoader(template_dir), autoescape = True)
+    template = environment.get_template("smmip_qc_report_template.html")
     
-    # make a list to store the text of the report
-    L = []
-    
-    # add title
-    L.append('# smMIP QC Report')
-    
-    if project:
-        L.append('Project: {0}'.format(project))          
-             
-    L.append('\n')
-    L.append('## Run: {0}'.format(run))         
-    L.append('Date: {0}'.format(current_date) + '\n')                
-           
-    L.append('Sample QC metrics are available in the table: {0}'.format(os.path.basename(QC_summary)))
-
-                    
-    L.append('### Plots of QC metrics per sample\n')
-
-    L.append('![QC_metrics]({0})'.format(metrics_figure))
-    
-    L.append('\n')
-    
-    if include_plate:
-        L.append('Plots of QC metrics per plate\n')
-        for i in metric_plots:
-            L.append('![qc]({0})'.format(i))
-            L.append('\n')
-        L.append('Plots of QC metrics per plate and well location\n')
-        for i in heatmap_names:
-            L.append('![heatmap]({0})'.format(i))
-            L.append('\n')
-    # convert list to string text
-    content = '\n'.join(L)
-    
-    # convert markdown to html
-    html = markdown.markdown(content)
-     
-    if project is None:
-        report_file = 'smMIP_QC_Report_{0}.pdf'.format(run)
+    if args.user:
+        user = args.user
     else:
-        report_file = 'smMIP_QC_Report_{0}_{1}.pdf'.format(project, run)
-    # convert html to pdf
-    newfile = open(report_file, "wb")
-    pisa.CreatePDF(html, newfile)
-    newfile.close()
+        user = 'NA'
+    if args.ticket:
+        ticket = args.ticket
+    else:
+        ticket = 'NA'
 
+    
+    # fill in template
+    context = {'project' : args.project,
+               'run': args.run, 
+               'metrics_table': os.path.basename(args.qc_summary),
+               'current_date': current_date,
+               'metrics_figure': metrics_figure,
+               'plates': plates,
+               'heatmap_names': heatmap_names,
+               'metric_plots': metric_plots,
+               'plate_count': len(plates),
+               'sample_count': len(samples),
+               'ticket': ticket,
+               'user': user}
 
+    # render template html 
+    content = template.render(context)
+
+    # convert html to PDF
+    reportname = 'smMIP_QC_Report_{0}_{1}.pdf'.format(args.project, args.run)
+    if args.workingdir:
+        report_file = os.path.join(args.workingdir, reportname)  
+    else:
+        report_file = reportname    
+                        
+    makepdf(content, report_file)
+
+    
 if __name__ == '__main__':
 
     # create top-level parser
     parser = argparse.ArgumentParser(prog = 'smMIPqcReport.py', description='Generates a report for the smMIP QC analysis', add_help=True)
 
     
-    parser.add_argument('-p', '--Project', dest='project', help='Name of the project')
+    parser.add_argument('-p', '--Project', dest='project', help='Name of the project', required=True)
     parser.add_argument('-r', '--Run', dest='run', help='Run ID', required=True)
-    parser.add_argument('-q', '--QC', dest='qc', help='Path to the table with sample QC metrics', required=True)
-    parser.add_argument('-l', '--Location', dest='location', help='Path to the file with sample plate and well information')
-    parser.add_argument('--plates', dest='include_plates', action='store_true', help='Include metrics plots at the plate level and heatmaps. Does not include plate level plots by default')
+    parser.add_argument('-q', '--QC', dest='qc_summary', help='Path to the table with sample QC metrics', required=True)
+    parser.add_argument('-l', '--Location', dest='wells', help='Path to the file with sample plate and well information', required=True)
+    parser.add_argument('-wd', '--workingdir', dest='workingdir', help='Path to working directory in which the report is written')
+    parser.add_argument('-t', '--ticket', dest='ticket', help='Jira ticket')
+    parser.add_argument('-u', '--user', dest='user', help='Name of the GSI personnel generating the report')
+    parser.set_defaults(func=write_QC_report)
     
     # get arguments from the command line
     args = parser.parse_args()
-            
-    generate_report(args.project, args.run, args.qc, args.location, args.include_plates)
+    # pass the args to the default function
+    args.func(args)
+
+    
+
+
 
