@@ -159,7 +159,7 @@ def CreateAx(row, col, pos, figure, Data, samples, run, YLabel, title = None, XL
 
 
 
-def plot_qc_metrics(project, run, plate, samples, percent_assigned, read_counts, assigned, percent_discarded, empty, percent_empty, Title):
+def plot_qc_metrics(project, run, workingdir, plate, samples, percent_assigned, read_counts, assigned, percent_discarded, empty, percent_empty, Title):
     
     
     figure = plt.figure(1, figsize = (55, 55)) 
@@ -185,6 +185,9 @@ def plot_qc_metrics(project, run, plate, samples, percent_assigned, read_counts,
     if plate is None:
         plate = ''
     outputfile = '_'.join([project, run, plate.replace(' ', '_'), 'smMIP_QC.png']).strip('_')
+    if workingdir:
+        outputfile = os.path.join(workingdir, outputfile)
+    
     figure.savefig(outputfile, bbox_inches = 'tight')
     plt.close()
     return outputfile
@@ -402,7 +405,7 @@ def create_ax_heatmap(row, col, pos, figure, Data, XLabel, title=None):
 
 
 
-def plot_heatmaps(read_counts, assigned, percent_assigned, percent_empty, project, run, current_plate):
+def plot_heatmaps(workingdir, read_counts, assigned, percent_assigned, percent_empty, project, run, current_plate):
     
     figure = plt.figure(1, figsize = (25, 20)) 
     # plot data
@@ -418,6 +421,8 @@ def plot_heatmaps(read_counts, assigned, percent_assigned, percent_empty, projec
     if project is None:
         project = ''
     figure_name = '_'.join([project, run, plate_name, 'QC_heatmap.png']).strip('_')
+    if workingdir:
+        os.path.join(workingdir, figure_name)
     figure.savefig(figure_name, bbox_inches = 'tight')
     plt.close()
     return figure_name
@@ -489,7 +494,7 @@ def write_QC_report(args):
     samples, percent_assigned, read_counts, assigned, percent_discarded, empty, percent_empty = get_samples_qc(D)
 
     # plot qc metrics for the run and project
-    metrics_figure = plot_qc_metrics(args.project, args.run, '', samples, percent_assigned, read_counts, assigned, percent_discarded, empty, percent_empty, '{0} smMip QC'.format(args.run))
+    metrics_figure = plot_qc_metrics(args.project, args.run, args.workingdir, '', samples, percent_assigned, read_counts, assigned, percent_discarded, empty, percent_empty, '{0} smMip QC'.format(args.run))
 
     # get the samples plate and well location
     samples_plates = get_sample_plate_location(args.wells)
@@ -514,7 +519,7 @@ def write_QC_report(args):
         Dprime = {i:D[i] for i in D if samples_plates[i][0] == current_plate}
         # get the samples of interest and associated qc metrics
         s, pa, rc, a, pd, e, pe = get_samples_qc(Dprime)
-        metrics_figure_plate = plot_qc_metrics(args.project, args.run, current_plate, s, pa, rc, a, pd, e, pe, current_plate)
+        metrics_figure_plate = plot_qc_metrics(args.project, args.run, args.workingdir, current_plate, s, pa, rc, a, pd, e, pe, current_plate)
         metric_plots[current_plate] = metrics_figure_plate
         # map samples with qc metrics to each well
         wells = map_samples_to_wells(samples_plates, current_plate)
@@ -528,7 +533,7 @@ def write_QC_report(args):
         percent_assigned = qc_metrics_on_plate(Dprime, current_samples, 'percent_assigned')
         percent_empty = qc_metrics_on_plate(Dprime, current_samples, 'percent_empty_smmips')
         # plot heatmaps for the current plate
-        figure_name = plot_heatmaps(read_counts, assigned, percent_assigned, percent_empty, args.project, args.run, current_plate)
+        figure_name = plot_heatmaps(args.workingdir, read_counts, assigned, percent_assigned, percent_empty, args.project, args.run, current_plate)
         heatmap_names[current_plate] = figure_name
 
 
@@ -551,15 +556,6 @@ def write_QC_report(args):
     else:
         ticket = 'NA'
 
-
-    if args.workingdir:
-        metrics_figure = os.path.join(args.workingdir, metrics_figure)  
-        for i in heatmap_names:
-            heatmap_names[i] = os.path.join(args.workingdir, heatmap_names[i])
-        for i in metric_plots:
-            metric_plots[i] = os.path.join(args.workingdir, metric_plots[i])
-
-    
     # fill in template
     context = {'project' : args.project,
                'run': args.run, 
