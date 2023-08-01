@@ -453,43 +453,28 @@ def makepdf(html, outputfile):
     htmldoc = HTML(string=html, base_url=__file__)
     htmldoc.write_pdf(outputfile, stylesheets=[CSS(css_file)], presentational_hints=True)
 
-
-
+    
 def write_QC_report(args):
     '''
     (str, str, str, str, str, str, str, list, str | None)
 
-    Write a PDF report with QC metrics and released fastqs for a given project
-
-    - project (str): Project name as it appears in File Provenance Report
-    - working-dir (str): Path to the directory with project directories and links to fastqs 
-    - project_name (str): Project name used to create the project directory in gsi space
-    - project_code (str): Project code from MISO
-    - bamqc_db (str): Path to the bamqc db
-    - cfmedipqc_db (str): Path to the cfmedipqc db 
-    - run_directories (list): List of directories with links to fastqs
-    - provenance (str): Path to File Provenance Report.
-    - level (str): Simgle release or cumulative project level report. Values: single or cumulative 
-    - prefix (str | None): Use of prefix assumes that file paths in File Provenance Report are relative paths.
-                           Prefix is added to the relative path in FPR to determine the full file path.
-    - keep_html (bool): Writes html report to file if True
-    '''
-
-    '''
-     project, run, QC_summary, sample_wells, include_plate):
-     
-     (str | None, str, str, str, bool)
-         
+    Write a PDF report with plots of QC metrics
 
     Parameters
-    ----------    
-             
+    ----------
     - project (str): Name of the project
     - run (str): Run ID
-    - qc_summary (str): Path to the summary file with QC metrics
-    - sample_wells (str): Path to the file with sample plate and well information
+    - qc_summary (str): Path to the table with sample QC metrics
+    - wells (str): Path to the file with sample plate and well information
+    - workingdir (str | None): Path to working directory in which the report is written
+    - ticket (str | None): Jira ticket
+    - user (Str | None): Name of the GSI personnel generating the report
     '''
-         
+    
+    print('workingdir')
+    print(args.workingdir)
+
+     
     # extract QC metrics
     D = read_qc_table(args.qc_summary)
     # remove samples not in project, but keep controls
@@ -505,7 +490,7 @@ def write_QC_report(args):
 
     # plot qc metrics for the run and project
     metrics_figure = plot_qc_metrics(args.project, args.run, '', samples, percent_assigned, read_counts, assigned, percent_discarded, empty, percent_empty, '{0} smMip QC'.format(args.run))
-         
+
     # get the samples plate and well location
     samples_plates = get_sample_plate_location(args.wells)
          
@@ -565,6 +550,14 @@ def write_QC_report(args):
         ticket = args.ticket
     else:
         ticket = 'NA'
+
+
+    if args.workingdir:
+        metrics_figure = os.path.join(args.workingdir, metrics_figure)  
+        for i in heatmap_names:
+            heatmap_names[i] = os.path.join(args.workingdir, heatmap_names[i])
+        for i in metric_plots:
+            metric_plots[i] = os.path.join(args.workingdir, metric_plots[i])
 
     
     # fill in template
