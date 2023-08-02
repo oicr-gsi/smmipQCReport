@@ -422,7 +422,7 @@ def plot_heatmaps(workingdir, read_counts, assigned, percent_assigned, percent_e
         project = ''
     figure_name = '_'.join([project, run, plate_name, 'QC_heatmap.png']).strip('_')
     if workingdir:
-        os.path.join(workingdir, figure_name)
+        figure_name = os.path.join(workingdir, figure_name)
     figure.savefig(figure_name, bbox_inches = 'tight')
     plt.close()
     return figure_name
