@@ -458,6 +458,35 @@ def makepdf(html, outputfile):
     htmldoc = HTML(string=html, base_url=__file__)
     htmldoc.write_pdf(outputfile, stylesheets=[CSS(css_file)], presentational_hints=True)
 
+
+
+
+
+def extract_downsize_metrics(downsize_summary):
+    '''
+    (str)- > str
+    
+    Returns the content of the downsize summary file, explaining how downsizing
+    was performed on the original fastqs
+       
+    Parameters
+    ----------
+    - downsize_summary (str): Summary file explaining how downsizing was
+                              performed on the original fastqs
+    '''
+    
+    infile = open(downsize_summary)
+    content = infile.read().rstrip()
+    infile.close()
+    
+    return content
+
+    
+    
+
+
+
+
     
 def write_QC_report(args):
     '''
@@ -570,6 +599,12 @@ def write_QC_report(args):
                'ticket': ticket,
                'user': user}
 
+
+    if args.downsize:
+        downsize_summary = extract_downsize_metrics(args.downsize)
+        context['downsize_summary'] = downsize_summary
+
+
     # render template html 
     content = template.render(context)
 
@@ -596,6 +631,7 @@ if __name__ == '__main__':
     parser.add_argument('-wd', '--workingdir', dest='workingdir', help='Path to working directory in which the report is written')
     parser.add_argument('-t', '--ticket', dest='ticket', help='Jira ticket')
     parser.add_argument('-u', '--user', dest='user', help='Name of the GSI personnel generating the report')
+    parser.add_argument('-d', '--downsize', dest='downsize', help='Path to the file with comment about downsizing fastqs')
     parser.set_defaults(func=write_QC_report)
     
     # get arguments from the command line

@@ -33,6 +33,11 @@
    <br>
    <br>
    <p style="top-padding:50px;">Sample QC metrics are available in the table: <span style="font-style: italic; font-size: 12px">{{metrics_table}}</span></p>
+    
+   {% if downsize_summary %}
+     <p style="top-padding:50px; font-style: italic; font-size: 12px">{{downsize_summary}}</p>
+   {% endif %} 
+      
 
 
    <table id="user_table">
