@@ -243,25 +243,25 @@ def get_plates(samples_plates, D, project):
     
     # make a list of plates
     plates = sorted(list(set([samples_plates[i][0] for i in samples_plates if i in D])))
-    # create a dict to store samples on each plate
-    s = {}
-    for i in samples_plates:
-        if samples_plates[i][0] not in s:
-            s[samples_plates[i][0]] = []
-        s[samples_plates[i][0]].append(i)
-    # check if plates only contains control samples
-    if project:
-        to_remove = []
-        for i in s:
-            contains_samples = []
-            for j in s[i]:
-                contains_samples.append(project in j)
-            # remove plate if only controls are on the plate
-            if not any(contains_samples):
-                to_remove.append(i)
-        for i in to_remove:
-            if i in plates:
-                plates.remove(i)
+    # # create a dict to store samples on each plate
+    # s = {}
+    # for i in samples_plates:
+    #     if samples_plates[i][0] not in s:
+    #         s[samples_plates[i][0]] = []
+    #     s[samples_plates[i][0]].append(i)
+    # # check if plates only contains control samples
+    # if project:
+    #     to_remove = []
+    #     for i in s:
+    #         contains_samples = []
+    #         for j in s[i]:
+    #             contains_samples.append(project in j)
+    #         # remove plate if only controls are on the plate
+    #         if not any(contains_samples):
+    #             to_remove.append(i)
+    #     for i in to_remove:
+    #         if i in plates:
+    #             plates.remove(i)
     return plates
 
 
@@ -512,8 +512,11 @@ def write_QC_report(args):
     # extract QC metrics
     D = read_qc_table(args.qc_summary)
     # remove samples not in project, but keep controls
-    D = keep_project_samples(D, args.project)
-         
+    # D = keep_project_samples(D, args.project)
+    
+
+
+     
     # get the qc table header
     infile = open(args.qc_summary)
     header = infile.readline().rstrip().split('\t')
